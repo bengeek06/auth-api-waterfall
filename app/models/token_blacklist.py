@@ -28,7 +28,7 @@ class TokenBlacklist(db.Model):
     )
     jti = db.Column(db.String(255), unique=True, nullable=False)
     user_id = db.Column(db.String(36), nullable=False)
-    company_id = db.Column(db.String(36), nullable=False)
+    company_id = db.Column(db.String(36), nullable=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     expires_at = db.Column(db.DateTime, nullable=False)
 

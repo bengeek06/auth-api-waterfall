@@ -1,8 +1,8 @@
-"""initialization
+"""init
 
-Revision ID: e81d7948864d
+Revision ID: 385a1e97d791
 Revises: 
-Create Date: 2025-07-13 16:54:02.136610
+Create Date: 2025-08-14 12:19:54.419720
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'e81d7948864d'
+revision = '385a1e97d791'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -22,7 +22,7 @@ def upgrade():
     sa.Column('id', sa.String(length=36), nullable=False),
     sa.Column('token', sa.String(length=512), nullable=False),
     sa.Column('user_id', sa.String(length=36), nullable=False),
-    sa.Column('company_id', sa.String(length=36), nullable=False),
+    sa.Column('company_id', sa.String(length=36), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.Column('expires_at', sa.DateTime(), nullable=False),
     sa.Column('revoked', sa.Boolean(), nullable=True),
@@ -33,7 +33,7 @@ def upgrade():
     sa.Column('id', sa.String(length=36), nullable=False),
     sa.Column('jti', sa.String(length=255), nullable=False),
     sa.Column('user_id', sa.String(length=36), nullable=False),
-    sa.Column('company_id', sa.String(length=36), nullable=False),
+    sa.Column('company_id', sa.String(length=36), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.Column('expires_at', sa.DateTime(), nullable=False),
     sa.PrimaryKeyConstraint('id'),
