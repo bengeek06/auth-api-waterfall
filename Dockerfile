@@ -22,8 +22,9 @@ RUN pip install -r requirements-dev.txt
 # Copy application code
 COPY . .
 COPY ./wait-for-it.sh /
+COPY ./docker-entrypoint.sh /
 RUN chmod +x /wait-for-it.sh
-RUN chmod +x docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 # Set environment for development
 ENV FLASK_ENV=development
@@ -32,7 +33,7 @@ ENV WAIT_FOR_DB=true
 ENV RUN_MIGRATIONS=true
 
 EXPOSE 5000
-ENTRYPOINT ["./docker-entrypoint.sh"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
 
 # Production stage
 FROM base as production
@@ -40,8 +41,9 @@ FROM base as production
 # Copy application code (no dev dependencies)
 COPY . .
 COPY ./wait-for-it.sh /
+COPY ./docker-entrypoint.sh /
 RUN chmod +x /wait-for-it.sh
-RUN chmod +x docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 # Install Gunicorn for production
 RUN pip install gunicorn
@@ -53,4 +55,4 @@ ENV WAIT_FOR_DB=true
 ENV RUN_MIGRATIONS=true
 
 EXPOSE 5000
-ENTRYPOINT ["./docker-entrypoint.sh"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
