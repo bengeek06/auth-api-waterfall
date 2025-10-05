@@ -13,7 +13,7 @@
 
 ## Overview
 
-**PM Auth API** is a RESTful authentication service for user login, logout, token verification, refresh, and configuration/version endpoints.  
+**PM Auth API** is a RESTful authentication service for user login, logout, token verification, refresh, and configuration/version/health endpoints.  
 It uses JWT for access tokens and supports secure cookie-based authentication.
 
 ---
@@ -32,6 +32,7 @@ It uses JWT for access tokens and supports secure cookie-based authentication.
 │   │   └── token_blacklist.py
 │   ├── resources
 │   │   ├── config.py
+│   │   ├── health.py
 │   │   ├── __init__.py
 │   │   ├── login.py
 │   │   ├── logout.py
@@ -74,6 +75,21 @@ Database URL and secrets are configured via environment variables (see `env.exam
 
 ---
 
+## Environment Variables
+
+The service reads the following variables (see env.example):
+
+| Variable              | Description |
+|-----------------------|-------------|
+| FLASK_ENV             | Environment (development, testing, staging, production) |
+| LOG_LEVEL             | Logging level (DEBUG, INFO, etc.) |
+| DATABASE_URL          | SQLAlchemy database URL |
+| USER_SERVICE_URL      | External user service base URL (for credential verification) |
+| INTERNAL_AUTH_TOKEN   | Internal shared secret for inter-service auth |
+| JWT_SECRET            | Secret used to sign JWTs |
+
+---
+
 ## Features
 
 - User authentication with JWT access and refresh tokens
@@ -92,12 +108,19 @@ Database URL and secrets are configured via environment variables (see `env.exam
 - Python 3.11+
 - pip
 
-### Installation
+### Create virtual environment
 
 ```bash
-git clone https://github.com/bengeek06/pm-auth-api.git
-cd pm-auth-api
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
 pip install -r requirements.txt
+```
+
+(For development tooling:)
+
+```bash
+pip install -r requirements-dev.txt
 ```
 
 ### Environment
@@ -105,26 +128,27 @@ pip install -r requirements.txt
 Copy and edit the example environment file:
 
 ```bash
-cp env.example .env
+cp env.example .env.development # or .env.test
 ```
 
 Set at least:
 
 - `FLASK_ENV=development`
 - `DATABASE_URL=sqlite:///pm-auth.db`
-- `SECRET_KEY=your_secret`
+- `USER_SERVICE_URL=http://identity_service:5000`
+- `INTERNAL_AUTH_TOKEN=your_secret`
 - `JWT_SECRET=your_jwt_secret`
 
 ### Running
 
 ```bash
-flask run
+python run.py
 ```
 
-Or with Gunicorn:
+Gunicorn (production-style):
 
 ```bash
-gunicorn wsgi:app
+gunicorn -w 4 -b 0.0.0.0:5000 wsgi:app
 ```
 
 ---
@@ -138,14 +162,17 @@ You can visualize it with [Swagger Editor](https://editor.swagger.io/) or [Redoc
 
 ## Endpoints
 
-| Method | Path      | Description                    |
-|--------|-----------|--------------------------------|
-| POST   | /login    | User login, returns tokens     |
-| POST   | /logout   | User logout, revokes tokens    |
-| POST   | /refresh  | Refresh access token           |
-| GET    | /verify   | Verify access token            |
-| GET    | /config   | Get app configuration          |
-| GET    | /version  | Get API version                |
+| Method | Path      | Description                       |
+|--------|-----------|-----------------------------------|
+| POST   | /login    | User login, returns tokens        |
+| POST   | /logout   | User logout, revokes tokens       |
+| POST   | /refresh  | Refresh access token              |
+| GET    | /verify   | Verify access token               |
+| GET    | /config   | Get app configuration             |
+| GET    | /version  | Get API version                   |
+| GET    | /health   | Service health status (new)       |
+
+/health returns a simple JSON status (extendable for DB checks later).
 
 ---
 
@@ -153,6 +180,103 @@ You can visualize it with [Swagger Editor](https://editor.swagger.io/) or [Redoc
 
 ```bash
 pytest
+```
+
+(Uses FLASK_ENV=testing automatically via conftest.)
+
+---
+
+## Docker Usage
+
+You can run the service using the production image (either locally built or from GHCR).
+
+### Run with docker (production mode)
+
+```bash
+docker run -d \
+  --name auth_service \
+  -p 5000:5000 \
+  -e FLASK_ENV=production \
+  -e LOG_LEVEL=INFO \
+  -e DATABASE_URL=postgresql://user:pass@db:5432/auth_prod \
+  -e USER_SERVICE_URL=http://users_service:5000 \
+  -e INTERNAL_AUTH_TOKEN=change-me-internal \
+  -e JWT_SECRET=change-me-jwt \
+  ghcr.io/<owner>/<repo>:latest
+```
+
+If you built locally:
+```bash
+docker build -t auth-service:prod --target production .
+docker run -d --name auth_service -p 5000:5000 -e FLASK_ENV=production auth-service:prod
+```
+
+Optional (supported by entrypoint if present):
+- `WAIT_FOR_DB=true`
+- `RUN_MIGRATIONS=true`
+
+### docker-compose example
+
+```yaml
+version: "3.9"
+
+services:
+  auth_service:
+    image: ghcr.io/<owner>/<repo>:latest
+    container_name: auth_service
+    restart: unless-stopped
+    environment:
+      FLASK_ENV: production
+      LOG_LEVEL: INFO
+      DATABASE_URL: postgresql://auth_user:auth_pass@db:5432/auth_db
+      USER_SERVICE_URL: http://users_service:5000
+      INTERNAL_AUTH_TOKEN: ${INTERNAL_AUTH_TOKEN:-change-me-internal}
+      JWT_SECRET: ${JWT_SECRET:-change-me-jwt}
+      WAIT_FOR_DB: "true"
+      RUN_MIGRATIONS: "true"
+    depends_on:
+      - db
+    ports:
+      - "5000:5000"
+
+  db:
+    image: postgres:15-alpine
+    container_name: auth_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: auth_user
+      POSTGRES_PASSWORD: auth_pass
+      POSTGRES_DB: auth_db
+    volumes:
+      - auth_pg_data:/var/lib/postgresql/data
+
+  # Optional example user service dependency
+  users_service:
+    image: ghcr.io/<owner>/<user-service-repo>:latest
+    environment:
+      FLASK_ENV: production
+    restart: unless-stopped
+
+volumes:
+  auth_pg_data:
+```
+
+Create a `.env` file alongside docker-compose to override secrets:
+
+```
+INTERNAL_AUTH_TOKEN=super-secret-internal
+JWT_SECRET=super-secret-jwt
+```
+
+Start:
+```bash
+docker compose up -d
+```
+
+### Health check
+
+```bash
+curl -s http://localhost:5000/health
 ```
 
 ---
