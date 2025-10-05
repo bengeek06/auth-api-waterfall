@@ -35,12 +35,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Login successful
         '401':
           description: Invalid email or password
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Invalid email or password
 
   /logout:
     post:
@@ -59,12 +63,16 @@ paths:
               application/json:
                 schema:
                   $ref: '#/components/schemas/MessageResponse'
+                example:
+                  message: Logout successful
         '400':
           description: Missing tokens
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Missing authentication token(s)
 
   /refresh:
     post:
@@ -83,18 +91,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Access token refreshed
         '400':
           description: Missing refresh token
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Refresh token missing
         '401':
           description: Invalid or expired refresh token
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Invalid or expired refresh token
 
   /verify:
     get:
@@ -107,12 +121,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VerifyResponse'
+              example:
+                user_id: 9f1c2a54-3b3d-451a-91ab-72f3f4d9b120
+                company_id: null
+                email: user@example.com
+                valid: true
         '401':
           description: Token is missing, invalid, expired, or revoked
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: Invalid or expired token
 
   /config:
     get:
@@ -125,6 +146,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ConfigResponse'
+              example:
+                FLASK_ENV: development
+                DATABASE_URL: postgresql://auth_user:auth_pass@db:5432/auth_db
+                LOG_LEVEL: INFO
+                USER_SERVICE_URL: http://users_service:5000
 
   /version:
     get:
@@ -137,6 +163,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VersionResponse'
+              example:
+                version: 0.0.1
 
   /health:
     get:
@@ -149,6 +177,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: ok
 
 components:
   securitySchemes:
