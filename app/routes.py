@@ -1,10 +1,10 @@
 """
-routes.py
------------
-Routes for the Flask application.
-# This module is responsible for registering the routes of the REST API
-# and linking them to the corresponding resources.
+Route registration module.
+
+This module handles the registration of all API routes for the Flask application.
+It imports and registers blueprints or route handlers from various modules.
 """
+
 from flask_restful import Api
 from app.logger import logger
 from app.resources.version import VersionResource
@@ -29,12 +29,12 @@ def register_routes(app):
     """
     api = Api(app)
 
-    api.add_resource(VersionResource, '/version')
-    api.add_resource(ConfigResource, '/config')
-    api.add_resource(LoginResource, '/login')
-    api.add_resource(LogoutResource, '/logout')
-    api.add_resource(VerifyResource, '/verify')
-    api.add_resource(RefreshResource, '/refresh')
-    api.add_resource(HealthResource, '/health')
+    api.add_resource(VersionResource, "/version")
+    api.add_resource(ConfigResource, "/config")
+    api.add_resource(LoginResource, "/login")
+    api.add_resource(LogoutResource, "/logout")
+    api.add_resource(VerifyResource, "/verify")
+    api.add_resource(RefreshResource, "/refresh")
+    api.add_resource(HealthResource, "/health")
 
     logger.info("Routes registered successfully.")

@@ -1,6 +1,5 @@
 """
-logger.py
----------
+Logger configuration module.
 
 This module configures the application logger using structlog and colorlog.
 
@@ -15,10 +14,13 @@ Usage:
     logger.info("Your log message", extra_field="value")
 """
 
-import os
 import logging
+import os
+
 import colorlog
+
 import structlog
+
 
 # Detect environment
 env = os.environ.get("FLASK_ENV", "development").lower()

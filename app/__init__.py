@@ -1,7 +1,4 @@
 """
-__init__.py
------------
-
 Main entry point for initializing the Flask application.
 
 This module is responsible for:
@@ -18,13 +15,17 @@ Functions:
 """
 
 import os
+
 from flask import Flask
-from flask_migrate import Migrate
-from flask_marshmallow import Marshmallow
+
 from flask_cors import CORS
 
-from .models import db
+from flask_marshmallow import Marshmallow
+
+from flask_migrate import Migrate
+
 from .logger import logger
+from .models import db
 from .routes import register_routes
 
 # Initialisation des extensions Flask
@@ -52,6 +53,7 @@ def register_error_handlers(app):
     Args:
         app (Flask): The Flask application instance.
     """
+
     @app.errorhandler(404)
     def not_found(_):
         """Handler for 404 (resource not found) errors."""
@@ -80,16 +82,12 @@ def create_app(config_class):
     Returns:
         Flask: The configured and ready-to-use Flask application instance.
     """
-    env = os.getenv('FLASK_ENV')
+    env = os.getenv("FLASK_ENV")
     logger.info("Creating app in %s environment.", env)
     app = Flask(__name__)
     app.config.from_object(config_class)
-    if env in ('development', 'staging'):
-        CORS(
-            app,
-            supports_credentials=True,
-            resources={r"/*": {"origins": "*"}}
-            )
+    if env in ("development", "staging"):
+        CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
 
     register_extensions(app)
     register_error_handlers(app)

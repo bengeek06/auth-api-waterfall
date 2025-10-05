@@ -1,10 +1,9 @@
 """
-test_verify.py
---------------
-This module contains tests for the /verify endpoint to ensure access token
-validation,
-blacklist handling, expiration, and error responses work as expected.
+Tests for the token verification resource.
+
+This module contains tests for the VerifyResource API endpoint and JWT token verification.
 """
+
 import os
 from datetime import datetime, timedelta, timezone
 import jwt
@@ -15,10 +14,11 @@ from app.models import db
 def make_access_token(
     user_id=1,
     company_id=42,
-    email='test@example.com',
-    jti='test-jti',
+    email="test@example.com",
+    jti="test-jti",
     secret=None,
-    expired=False):
+    expired=False,
+):
     """
     Generate a JWT access token for testing.
 
@@ -34,19 +34,19 @@ def make_access_token(
         str: The encoded JWT access token.
     """
     if not secret:
-        secret = os.environ.get('JWT_SECRET', 'test_secret')
+        secret = os.environ.get("JWT_SECRET", "test_secret")
     if expired:
         exp = datetime.now(timezone.utc) - timedelta(minutes=1)
     else:
         exp = datetime.now(timezone.utc) + timedelta(minutes=15)
     payload = {
-        'sub': str(user_id),
-        'company_id': company_id,
-        'email': email,
-        'jti': jti,
-        'exp': exp.timestamp()
+        "sub": str(user_id),
+        "company_id": company_id,
+        "email": email,
+        "jti": jti,
+        "exp": exp.timestamp(),
     }
-    return jwt.encode(payload, secret, algorithm='HS256')
+    return jwt.encode(payload, secret, algorithm="HS256")
 
 
 def test_verify_success(client):
@@ -57,13 +57,13 @@ def test_verify_success(client):
     and the correct user information.
     """
     access_token = make_access_token()
-    client.set_cookie('access_token', access_token)
-    response = client.get('/verify')
+    client.set_cookie("access_token", access_token)
+    response = client.get("/verify")
     assert response.status_code == 200
-    assert response.json['valid'] is True
-    assert response.json['user_id'] == '1'
-    assert response.json['company_id'] == 42
-    assert response.json['email'] == 'test@example.com'
+    assert response.json["valid"] is True
+    assert response.json["user_id"] == "1"
+    assert response.json["company_id"] == 42
+    assert response.json["email"] == "test@example.com"
 
 
 def test_verify_missing_token(client):
@@ -72,9 +72,9 @@ def test_verify_missing_token(client):
 
     Ensures that a request without an access token returns a 401 error.
     """
-    response = client.get('/verify')
+    response = client.get("/verify")
     assert response.status_code == 401
-    assert response.json['message'] == 'Missing access token'
+    assert response.json["message"] == "Missing access token"
 
 
 def test_verify_invalid_token(client):
@@ -84,15 +84,15 @@ def test_verify_invalid_token(client):
     Ensures that a request with an invalid access token returns a 401 error.
     """
     client.set_cookie(
-        'access_token',
-        'invalid.token.value',
+        "access_token",
+        "invalid.token.value",
         httponly=True,
         secure=True,
-        samesite='Strict'
+        samesite="Strict",
     )
-    response = client.get('/verify')
+    response = client.get("/verify")
     assert response.status_code == 401
-    assert response.json['message'] == 'Invalid token'
+    assert response.json["message"] == "Invalid token"
 
 
 def test_verify_expired_token(client):
@@ -102,10 +102,10 @@ def test_verify_expired_token(client):
     Ensures that a request with an expired access token returns a 401 error.
     """
     access_token = make_access_token(expired=True)
-    client.set_cookie('access_token', access_token)
-    response = client.get('/verify')
+    client.set_cookie("access_token", access_token)
+    response = client.get("/verify")
     assert response.status_code == 401
-    assert response.json['message'] == 'Token expired'
+    assert response.json["message"] == "Token expired"
 
 
 def test_verify_blacklisted_token(client):
@@ -114,17 +114,17 @@ def test_verify_blacklisted_token(client):
 
     Ensures that a request with a blacklisted access token returns a 401 error.
     """
-    jti = 'blacklisted-jti'
+    jti = "blacklisted-jti"
     access_token = make_access_token(jti=jti)
     tb = TokenBlacklist(
         jti=jti,
         user_id=1,
         company_id=42,
-        expires_at=datetime.now(timezone.utc) + timedelta(minutes=15)
+        expires_at=datetime.now(timezone.utc) + timedelta(minutes=15),
     )
     db.session.add(tb)
     db.session.commit()
-    client.set_cookie('access_token', access_token)
-    response = client.get('/verify')
+    client.set_cookie("access_token", access_token)
+    response = client.get("/verify")
     assert response.status_code == 401
-    assert response.json['message'] == 'Token revoked'
+    assert response.json["message"] == "Token revoked"
