@@ -158,6 +158,20 @@ gunicorn -w 4 -b 0.0.0.0:5000 wsgi:app
 The OpenAPI specification is available in [openapi.yml](openapi.yml).  
 You can visualize it with [Swagger Editor](https://editor.swagger.io/) or [Redoc](https://redocly.github.io/redoc/).
 
+## Interactive API Documentation
+| Path        | Description            |
+|-------------|------------------------|
+| /openapi.yaml | Raw OpenAPI spec (YAML) |
+| /docs       | Swagger UI (interactive) |
+| /redoc      | ReDoc documentation     |
+
+Example:
+```bash
+curl -I http://localhost:5000/openapi.yaml
+open http://localhost:5000/docs
+open http://localhost:5000/redoc
+```
+
 ---
 
 ## Endpoints
