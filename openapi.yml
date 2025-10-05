@@ -1,14 +1,14 @@
 openapi: 3.0.3
 info:
-  title: PM Auth API
-  version: "1.0.0"
-  description: API for authentication, token management, and configuration.
+  title: Auth API for Waterfall application
+  version: "0.0.1"
+  description: API for authentication, token management, configuration, version, health and documentation serving.
 
 servers:
-  - url: http://localhost:5001
-    description: Staging development server
   - url: http://localhost:5000
     description: Local development server
+  - url: http://localhost:5001
+    description: Staging development server
   
 
 paths:
@@ -26,6 +26,11 @@ paths:
       responses:
         '200':
           description: Login successful, tokens set as cookies
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: access_token / refresh_token HttpOnly cookies.
           content:
             application/json:
               schema:
@@ -41,14 +46,19 @@ paths:
     post:
       summary: User logout and token revocation
       description: |
-        Blacklists the access token, deletes the refresh token, and clears authentication cookies.
+        Blacklists the access token (if present), deletes the refresh token, and clears authentication cookies.
       responses:
         '200':
-          description: Logout successful, cookies cleared
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponse'
+            description: Logout successful, cookies cleared
+            headers:
+              Set-Cookie:
+                schema:
+                  type: string
+                description: Cleared cookies (expired).
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/MessageResponse'
         '400':
           description: Missing tokens
           content:
@@ -60,10 +70,15 @@ paths:
     post:
       summary: Refresh access token
       description: |
-        Issues a new JWT access token using a valid refresh token. Rotates the refresh token.
+        Issues a new JWT access token using a valid refresh token. Rotates the refresh token (old one invalidated).
       responses:
         '200':
-          description: Token refreshed, new access token set as cookie
+          description: Token refreshed, new access (and rotated refresh) token set as cookies
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: New access_token and refresh_token cookies.
           content:
             application/json:
               schema:
@@ -84,8 +99,7 @@ paths:
   /verify:
     get:
       summary: Verify access token
-      description: |
-        Verifies the validity of the JWT access token from cookies.
+      description: Verifies the validity of the JWT access token from cookies.
       responses:
         '200':
           description: Token is valid
@@ -103,7 +117,7 @@ paths:
   /config:
     get:
       summary: Get application configuration
-      description: Returns the current application configuration.
+      description: Returns a subset of current application configuration (non-sensitive).
       responses:
         '200':
           description: Application configuration
@@ -123,6 +137,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VersionResponse'
+
+  /health:
+    get:
+      summary: Health check
+      description: Returns a simple health status for the service.
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
 
 components:
   securitySchemes:
@@ -148,17 +174,20 @@ components:
       type: object
       properties:
         message:
-          type: string
+            type: string
 
     VerifyResponse:
       type: object
       properties:
         user_id:
           type: string
+          description: User identifier (UUID or string)
         company_id:
-          type: integer
+          type: string
+          nullable: true
         email:
           type: string
+          format: email
         valid:
           type: boolean
 
@@ -167,9 +196,11 @@ components:
       properties:
         FLASK_ENV:
           type: string
-        DEBUG:
+        DATABASE_URL:
           type: string
-        DATABASE_URI:
+        LOG_LEVEL:
+          type: string
+        USER_SERVICE_URL:
           type: string
 
     VersionResponse:
@@ -178,17 +209,25 @@ components:
         version:
           type: string
 
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+
     RefreshToken:
       type: object
       properties:
         id:
-          type: integer
+          type: string
         token:
           type: string
         user_id:
-          type: integer
+          type: string
         company_id:
-          type: integer
+          type: string
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -202,13 +241,14 @@ components:
       type: object
       properties:
         id:
-          type: integer
+          type: string
         jti:
           type: string
         user_id:
-          type: integer
+          type: string
         company_id:
-          type: integer
+          type: string
+          nullable: true
         created_at:
           type: string
           format: date-time
