@@ -15,7 +15,7 @@ class HealthResource(Resource):
     This resource provides a simple way to check if the service is running
     and responding to requests.
     """
-    
+
     def get(self):
         """
         GET /health
@@ -27,7 +27,7 @@ class HealthResource(Resource):
             - 200: Service is healthy and running
         """
         logger.debug("Health check requested")
-        
+
         return {
             "status": "healthy",
             "service": "auth_service",

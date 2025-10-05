@@ -21,7 +21,7 @@ import os
 
 class Config:
     """Base configuration common to all environments."""
-    SECRET_KEY = os.environ.get('SECRET_KEY', 'dev')
+    #SECRET_KEY = os.environ.get('SECRET_KEY', 'dev')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 
