@@ -108,4 +108,5 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Output published tags
-        run: echo "Published tags: ${{ steps.tags.outputs.tags }}"
+        run: |
+          echo "Published tags: ${{ steps.tags.outputs.tags }}"
