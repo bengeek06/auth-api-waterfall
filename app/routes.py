@@ -13,6 +13,7 @@ from app.resources.login import LoginResource
 from app.resources.logout import LogoutResource
 from app.resources.verify import VerifyResource
 from app.resources.refresh import RefreshResource
+from app.resources.health import HealthResource
 
 
 def register_routes(app):
@@ -34,5 +35,6 @@ def register_routes(app):
     api.add_resource(LogoutResource, '/logout')
     api.add_resource(VerifyResource, '/verify')
     api.add_resource(RefreshResource, '/refresh')
+    api.add_resource(HealthResource, '/health')
 
     logger.info("Routes registered successfully.")
