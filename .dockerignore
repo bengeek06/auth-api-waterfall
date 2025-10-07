@@ -19,6 +19,5 @@ htmlcov
 .env*
 !.env.example
 tests/
-requirements-dev.txt
 docker-compose*.yml
 README.md
