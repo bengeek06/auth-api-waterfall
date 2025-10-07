@@ -6,6 +6,7 @@ It imports and registers blueprints or route handlers from various modules.
 """
 
 from flask_restful import Api
+
 from app.logger import logger
 from app.resources.version import VersionResource
 from app.resources.config import ConfigResource
@@ -14,8 +15,8 @@ from app.resources.logout import LogoutResource
 from app.resources.verify import VerifyResource
 from app.resources.refresh import RefreshResource
 from app.resources.health import HealthResource
-import os
-from flask import send_from_directory, make_response
+
+
 
 
 def register_routes(app):
