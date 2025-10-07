@@ -15,13 +15,13 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # Development stage
 FROM base as development
 
-# Copy application code first
+# Copy application code
 COPY . .
+COPY ./wait-for-it.sh /
+COPY ./docker-entrypoint.sh /
 
 # Install development dependencies
 RUN pip install -r requirements-dev.txt
-COPY ./wait-for-it.sh /
-COPY ./docker-entrypoint.sh /
 RUN chmod +x /wait-for-it.sh
 RUN chmod +x /docker-entrypoint.sh
 
