@@ -3,7 +3,7 @@ black>=23.0.0
 flake8>=6.0.0
 flake8-docstrings>=1.7.0
 flake8-import-order>=0.18.0
-pytlint
+pylint
 pycodestyle
 
 # Testing (if not already present)
