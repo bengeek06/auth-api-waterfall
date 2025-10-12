@@ -23,7 +23,7 @@ tags:
     description: System status and version endpoints.
 
 paths:
-  /api/auth/login:
+  /login:
     post:
       summary: User Login
       description: |
@@ -60,7 +60,7 @@ paths:
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
 
-  /api/auth/verify:
+  /verify:
     get:
       summary: Verify Access Token Validity
       description: Verifies the validity of the JWT access token from the cookies.
@@ -81,7 +81,7 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedToken'
   
-  /api/auth/refresh:
+  /refresh:
     post:
       summary: Refresh Access Token
       description: Issues a new JWT access token using a valid refresh token. Typically rotates the refresh token too.
@@ -118,7 +118,7 @@ paths:
               example:
                 message: Invalid or expired refresh token
 
-  /api/auth/logout:
+  /logout:
     post:
       summary: User Logout and Token Revocation
       description: |
@@ -148,8 +148,22 @@ paths:
                 $ref: '#/components/schemas/DefaultResponse'
               example:
                 message: "Missing tokens"
+
+  /config:
+    get:
+      summary: Get Application Configuration
+      description: Returns the current application configuration including environment variables and settings.
+      tags:
+        - admin
+      responses:
+        '200':
+          description: Configuration retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigResponse'
                 
-  /api/auth/health:
+  /health:
     get:
       summary: Service Health Check
       description: Returns information on the running service status.
@@ -163,7 +177,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
 
-  /api/auth/version:
+  /version:
     get:
       summary: Get API Version
       description: Returns the current API version number.
@@ -270,6 +284,22 @@ components:
         version:
           type: string
           description: The current service version (e.g., '0.0.1').
+
+    ConfigResponse:
+      type: object
+      properties:
+        FLASK_ENV:
+          type: string
+          description: Current Flask environment (development, testing, staging, production).
+        DATABASE_URL:
+          type: string
+          description: Database connection URL.
+        LOG_LEVEL:
+          type: string
+          description: Current logging level.
+        USER_SERVICE_URL:
+          type: string
+          description: URL of the user service API.
 
   # ----------------------------------
   # REUSABLE RESPONSES
