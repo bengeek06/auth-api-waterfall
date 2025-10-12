@@ -1,22 +1,36 @@
-openapi: 3.0.3
+openapi: 3.0.0
 info:
-  title: Auth API for Waterfall application
-  version: "0.0.1"
-  description: API for authentication, token management, configuration, version, health and documentation serving.
-
+  title: Authentication API
+  version: 0.0.1
+  description: |
+    **Waterfall Auth API** is a RESTful authentication service for user login,
+    logout, token verification, refresh, and configuration/version endpoints.
+    
+    It uses JWT for access tokens and supports **secure, HttpOnly cookie-based**
+    authentication.
 servers:
   - url: http://localhost:5000
     description: Local development server
   - url: http://localhost:5001
     description: Staging development server
-  
+  - url: https://localhost:3000
+    description: Proxied staging server
+
+tags:
+  - name: auth
+    description: User authentication and token management endpoints.
+  - name: admin
+    description: System status and version endpoints.
 
 paths:
-  /login:
+  /api/auth/login:
     post:
-      summary: User login and token issuance
+      summary: User Login
       description: |
-        Authenticates a user and issues JWT access and refresh tokens as HttpOnly cookies.
+        Authenticates a user with email and password, issuing JWT access and refresh 
+        tokens set as secure, HttpOnly cookies.
+      tags:
+        - auth
       requestBody:
         required: true
         content:
@@ -25,169 +39,190 @@ paths:
               $ref: '#/components/schemas/LoginRequest'
       responses:
         '200':
-          description: Login successful, tokens set as cookies
+          description: Login successful, tokens set as cookies.
           headers:
             Set-Cookie:
-              schema:
-                type: string
-              description: access_token / refresh_token HttpOnly cookies.
+              $ref: '#/components/headers/AuthCookies'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageResponse'
+                $ref: '#/components/schemas/DefaultResponse'
               example:
                 message: Login successful
         '401':
-          description: Invalid email or password
+          description: Invalid credentials (email or password).
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageResponse'
+                $ref: '#/components/schemas/DefaultResponse'
               example:
                 message: Invalid email or password
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
 
-  /logout:
-    post:
-      summary: User logout and token revocation
-      description: |
-        Blacklists the access token (if present), deletes the refresh token, and clears authentication cookies.
-      responses:
-        '200':
-            description: Logout successful, cookies cleared
-            headers:
-              Set-Cookie:
-                schema:
-                  type: string
-                description: Cleared cookies (expired).
-            content:
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/MessageResponse'
-                example:
-                  message: Logout successful
-        '400':
-          description: Missing tokens
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponse'
-              example:
-                message: Missing authentication token(s)
-
-  /refresh:
-    post:
-      summary: Refresh access token
-      description: |
-        Issues a new JWT access token using a valid refresh token. Rotates the refresh token (old one invalidated).
-      responses:
-        '200':
-          description: Token refreshed, new access (and rotated refresh) token set as cookies
-          headers:
-            Set-Cookie:
-              schema:
-                type: string
-              description: New access_token and refresh_token cookies.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponse'
-              example:
-                message: Access token refreshed
-        '400':
-          description: Missing refresh token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponse'
-              example:
-                message: Refresh token missing
-        '401':
-          description: Invalid or expired refresh token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponse'
-              example:
-                message: Invalid or expired refresh token
-
-  /verify:
+  /api/auth/verify:
     get:
-      summary: Verify access token
-      description: Verifies the validity of the JWT access token from cookies.
+      summary: Verify Access Token Validity
+      description: Verifies the validity of the JWT access token from the cookies.
+      tags:
+        - auth
+      parameters:
+        - $ref: '#/components/parameters/AccessTokenCookie'
+        # The refresh token is often not needed for simple verification, 
+        # but kept here for consistency with your original design.
+        - $ref: '#/components/parameters/RefreshTokenCookie'
       responses:
         '200':
-          description: Token is valid
+          description: Token is valid.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/VerifyResponse'
-              example:
-                user_id: 9f1c2a54-3b3d-451a-91ab-72f3f4d9b120
-                company_id: null
-                email: user@example.com
-                valid: true
         '401':
-          description: Token is missing, invalid, expired, or revoked
+          $ref: '#/components/responses/UnauthorizedToken'
+  
+  /api/auth/refresh:
+    post:
+      summary: Refresh Access Token
+      description: Issues a new JWT access token using a valid refresh token. Typically rotates the refresh token too.
+      tags:
+        - auth
+      parameters:
+        - $ref: '#/components/parameters/RefreshTokenCookie'
+      responses:
+        '200':
+          description: Tokens refreshed, new access and refresh tokens set as cookies.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/AuthCookies'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageResponse'
+                $ref: '#/components/schemas/DefaultResponse'
               example:
-                message: Invalid or expired token
-
-  /config:
-    get:
-      summary: Get application configuration
-      description: Returns a subset of current application configuration (non-sensitive).
-      responses:
-        '200':
-          description: Application configuration
+                message: Token refreshed
+        '400':
+          description: Missing refresh token.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ConfigResponse'
+                $ref: '#/components/schemas/DefaultResponse'
               example:
-                FLASK_ENV: development
-                DATABASE_URL: postgresql://auth_user:auth_pass@db:5432/auth_db
-                LOG_LEVEL: INFO
-                USER_SERVICE_URL: http://users_service:5000
-
-  /version:
-    get:
-      summary: Get API version
-      description: Returns the current API version.
-      responses:
-        '200':
-          description: API version
+                message: Missing refresh token
+        '401':
+          description: Invalid or expired refresh token.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VersionResponse'
+                $ref: '#/components/schemas/DefaultResponse'
               example:
-                version: 0.0.1
+                message: Invalid or expired refresh token
 
-  /health:
-    get:
-      summary: Health check
-      description: Returns a simple health status for the service.
+  /api/auth/logout:
+    post:
+      summary: User Logout and Token Revocation
+      description: |
+        Blacklists the access token, deletes the refresh token, and sends Set-Cookie 
+        headers with expired dates to clear authentication cookies from the client.
+      tags:
+        - auth
+      parameters:
+        - $ref: '#/components/parameters/AccessTokenCookie'
+        - $ref: '#/components/parameters/RefreshTokenCookie'
       responses:
         '200':
-          description: Service healthy
+          description: Logout successful, cookies cleared.
+          # In a real system, you'd send an "empty" Set-Cookie to clear the tokens.
+          # Documenting the expected client response (cleared cookies) is usually sufficient.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefaultResponse'
+              example:
+                message: "Logout successful"
+        '400':
+          description: Missing tokens.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefaultResponse'
+              example:
+                message: "Missing tokens"
+                
+  /api/auth/health:
+    get:
+      summary: Service Health Check
+      description: Returns information on the running service status.
+      tags:
+        - admin
+      responses:
+        '200':
+          description: API is healthy.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
-              example:
-                status: ok
+
+  /api/auth/version:
+    get:
+      summary: Get API Version
+      description: Returns the current API version number.
+      tags:
+        - admin
+      responses:
+        '200':
+          description: API version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionResponse'
 
 components:
-  securitySchemes:
-    cookieAuth:
-      type: apiKey
-      in: cookie
+  # ----------------------------------
+  # REUSABLE PARAMETERS (Cookies)
+  # ----------------------------------
+  parameters:
+    AccessTokenCookie:
       name: access_token
+      in: cookie
+      description: The short-lived JWT used for authorization.
+      required: true
+      schema:
+        type: string
+    RefreshTokenCookie:
+      name: refresh_token
+      in: cookie
+      description: The long-lived JWT used to obtain a new access token.
+      required: true
+      schema:
+        type: string
 
+  # ----------------------------------
+  # REUSABLE HEADERS
+  # ----------------------------------
+  headers:
+    AuthCookies:
+      description: |
+        Sets the secure, HttpOnly `access_token` and `refresh_token` cookies.
+        Note: The server typically sends two separate Set-Cookie headers, but OpenAPI 
+        combines the description here for simplicity.
+      schema:
+        type: string
+      example: >
+        access_token=eyJhbGciOiJIUzI1NiI...; Max-Age=900; Path=/; HttpOnly; Secure,
+        refresh_token=eyJhbGciOiJIUzI1NiI...; Max-Age=604800; Path=/; HttpOnly; Secure
+
+  # ----------------------------------
+  # REUSABLE SCHEMAS (Request/Response Bodies)
+  # ----------------------------------
   schemas:
+    DefaultResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: A simple status message.
+
     LoginRequest:
       type: object
       required:
@@ -197,109 +232,68 @@ components:
         email:
           type: string
           format: email
+          description: User's email address.
         password:
           type: string
-      example:
-        email: user@example.com
-        password: secretPassword123
-
-    MessageResponse:
-      type: object
-      properties:
-        message:
-            type: string
-      example:
-        message: Operation completed successfully
+          format: password
+          description: User's password.
 
     VerifyResponse:
       type: object
       properties:
-        user_id:
-          type: string
-          description: User identifier (UUID or string)
         company_id:
           type: string
-          nullable: true
+          format: uuid
         email:
           type: string
           format: email
+        user_id:
+          type: string
+          format: uuid
         valid:
           type: boolean
-      example:
-        user_id: 9f1c2a54-3b3d-451a-91ab-72f3f4d9b120
-        company_id: null
-        email: user@example.com
-        valid: true
-
-    ConfigResponse:
-      type: object
-      properties:
-        FLASK_ENV:
-          type: string
-        DATABASE_URL:
-          type: string
-        LOG_LEVEL:
-          type: string
-        USER_SERVICE_URL:
-          type: string
-      example:
-        FLASK_ENV: development
-        DATABASE_URL: postgresql://auth_user:auth_pass@db:5432/auth_db
-        LOG_LEVEL: INFO
-        USER_SERVICE_URL: http://users_service:5000
-
-    VersionResponse:
-      type: object
-      properties:
-        version:
-          type: string
-      example:
-        version: 0.0.1
 
     HealthResponse:
       type: object
       properties:
         status:
           type: string
-          example: ok
-      example:
-        status: ok
+          enum: [healthy, degraded, unhealthy]
+        service:
+          type: string
+        message:
+          type: string
 
-    RefreshToken:
+    VersionResponse:
       type: object
       properties:
-        id: { type: string }
-        token: { type: string }
-        user_id: { type: string }
-        company_id: { type: string, nullable: true }
-        created_at: { type: string, format: date-time }
-        expires_at: { type: string, format: date-time }
-        revoked: { type: boolean }
-      example:
-        id: 1b2c3d4e-5f6a-7b8c-9d00-1e2f3a4b5c6d
-        token: 4f8c2b1d-9a78-4e13-bf12-77c0b98c12ef
-        user_id: 9f1c2a54-3b3d-451a-91ab-72f3f4d9b120
-        company_id: null
-        created_at: 2025-01-12T10:15:30Z
-        expires_at: 2025-01-19T10:15:30Z
-        revoked: false
+        version:
+          type: string
+          description: The current service version (e.g., '0.0.1').
 
-    TokenBlacklist:
-      type: object
-      properties:
-        id: { type: string }
-        jti: { type: string }
-        user_id: { type: string }
-        company_id: { type: string, nullable: true }
-        created_at: { type: string, format: date-time }
-        expires_at: { type: string, format: date-time }
-      example:
-        id: 7e6d5c4b-3a2f-1900-8c7b-6a5f4e3d2c1b
-        jti: 12d4aa0b3c2145f0b7e51e1a9b524ac9
-        user_id: 9f1c2a54-3b3d-451a-91ab-72f3f4d9b120
-        company_id: null
-        created_at: 2025-01-12T10:20:00Z
-        expires_at: 2025-01-12T12:20:00Z
+  # ----------------------------------
+  # REUSABLE RESPONSES
+  # ----------------------------------
+  responses:
+    UnauthorizedToken:
+      description: Token is missing, invalid, expired, or revoked.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DefaultResponse'
+          examples:
+            missing:
+              value:
+                message: "Missing access token"
+            expired:
+              value:
+                message: "Expired access token"
 
-security:
-  - cookieAuth: []
+    UnsupportedMediaType:
+      description: Did not attempt to load JSON data because the request Content-Type was not 'application/json'.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DefaultResponse'
+          example:
+            message: "Unsupported Media Type. Request Content-Type must be 'application/json'."
