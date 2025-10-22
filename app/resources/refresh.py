@@ -41,7 +41,9 @@ class RefreshResource(Resource):
             logger.error("Missing refresh token for refresh")
             return {"message": "Missing refresh token"}, 400
 
-        refresh_token = RefreshToken.query.filter_by(token=refresh_token_str).first()
+        refresh_token = RefreshToken.query.filter_by(
+            token=refresh_token_str
+        ).first()
 
         if not refresh_token:
             logger.error("Refresh token not found or already revoked")
@@ -76,9 +78,9 @@ class RefreshResource(Resource):
         # Optional: refresh token rotation (not implemented here)
         # Delete the old refresh token and create a new one
         db.session.delete(refresh_token)
-        new_refresh_token_str = jwt.utils.base64url_encode(os.urandom(64)).decode(
-            "utf-8"
-        )
+        new_refresh_token_str = jwt.utils.base64url_encode(
+            os.urandom(64)
+        ).decode("utf-8")
         new_refresh_token = RefreshToken(
             token=new_refresh_token_str,
             user_id=user_id,
@@ -90,7 +92,19 @@ class RefreshResource(Resource):
         logger.info("New access token generated for user %s", user_id)
 
         # Set the new access token as an HttpOnly cookie
-        response = make_response(jsonify({"message": "Token refreshed"}))
+        response_data = {"message": "Token refreshed"}
+
+        # Ajouter les tokens dans la réponse seulement en mode développement
+        if os.environ.get("FLASK_ENV") in ("development", "testing"):
+            response_data.update(
+                {
+                    "access_token": access_token,
+                    "refresh_token": new_refresh_token_str,
+                    "_dev_note": "Tokens visible in development mode only",
+                }
+            )
+
+        response = make_response(jsonify(response_data))
         response.set_cookie(
             "access_token",
             access_token,
@@ -98,5 +112,13 @@ class RefreshResource(Resource):
             secure=True,
             samesite="Strict",
             expires=access_token_exp,
+        )
+        response.set_cookie(
+            "refresh_token",
+            new_refresh_token_str,
+            httponly=True,
+            secure=True,
+            samesite="Strict",
+            expires=datetime.now(timezone.utc) + timedelta(days=7),
         )
         return response

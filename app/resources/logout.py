@@ -52,7 +52,9 @@ class LogoutResource(Resource):
             jti = payload.get("jti")
             user_id = payload.get("sub")
             company_id = payload.get("company_id")
-            expires_at = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
+            expires_at = datetime.fromtimestamp(
+                payload["exp"], tz=timezone.utc
+            )
             if jti:
                 blacklist_entry = TokenBlacklist(
                     jti=jti,
@@ -69,7 +71,9 @@ class LogoutResource(Resource):
             logger.error("Unexpected error during logout: %s", e)
 
         # Delete the refresh token from the database
-        refresh_token = RefreshToken.query.filter_by(token=refresh_token_str).first()
+        refresh_token = RefreshToken.query.filter_by(
+            token=refresh_token_str
+        ).first()
         if refresh_token:
             db.session.delete(refresh_token)
 
@@ -78,7 +82,12 @@ class LogoutResource(Resource):
         # Remove cookies on the client side
         response = make_response(jsonify({"message": "Logout successful"}))
         response.set_cookie(
-            "access_token", "", expires=0, httponly=True, secure=True, samesite="Strict"
+            "access_token",
+            "",
+            expires=0,
+            httponly=True,
+            secure=True,
+            samesite="Strict",
         )
         response.set_cookie(
             "refresh_token",

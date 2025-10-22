@@ -56,9 +56,9 @@ class VerifyResource(Resource):
 
             # Check expiration
             exp = payload.get("exp")
-            if exp and datetime.fromtimestamp(exp, tz=timezone.utc) < datetime.now(
-                timezone.utc
-            ):
+            if exp and datetime.fromtimestamp(
+                exp, tz=timezone.utc
+            ) < datetime.now(timezone.utc):
                 logger.warning("Token expired")
                 return {"message": "Token expired"}, 401
 

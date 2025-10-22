@@ -79,7 +79,19 @@ class LoginResource(Resource):
         db.session.commit()
 
         # Création de la réponse avec cookies httpOnly
-        response = make_response(jsonify({"message": "Login successful"}))
+        response_data = {"message": "Login successful"}
+
+        # Ajouter les tokens dans la réponse seulement en mode développement
+        if os.environ.get("FLASK_ENV") in ("development", "testing"):
+            response_data.update(
+                {
+                    "access_token": access_token,
+                    "refresh_token": refresh_token_str,
+                    "_dev_note": "Tokens visible in development mode only",
+                }
+            )
+
+        response = make_response(jsonify(response_data))
         response.set_cookie(
             "access_token",
             access_token,

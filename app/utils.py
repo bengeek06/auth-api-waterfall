@@ -46,11 +46,15 @@ def check_credentials(email, password):
         dotenv.load_dotenv(f".env.{env}")
         user_service_url = os.getenv("USER_SERVICE_URL")
         if not user_service_url:
-            logger.error("USER_SERVICE_URL is not set in environment variables.")
+            logger.error(
+                "USER_SERVICE_URL is not set in environment variables."
+            )
             return None
         internal_secret = os.getenv("INTERNAL_AUTH_TOKEN")
         if not internal_secret:
-            logger.error("INTERNAL_AUTH_TOKEN is not set in environment variables.")
+            logger.error(
+                "INTERNAL_AUTH_TOKEN is not set in environment variables."
+            )
             return None
 
         try:
@@ -71,7 +75,9 @@ def check_credentials(email, password):
             )
             if resp.status_code != 200:
                 logger.error(
-                    "Failed to fetch user: %s - %s", resp.status_code, resp.text
+                    "Failed to fetch user: %s - %s",
+                    resp.status_code,
+                    resp.text,
                 )
                 return None
             logger.debug("Response status code: %s", resp.status_code)

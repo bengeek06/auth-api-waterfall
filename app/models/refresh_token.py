@@ -25,7 +25,9 @@ class RefreshToken(db.Model):
 
     __tablename__ = "refresh_tokens"
 
-    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    id = db.Column(
+        db.String(36), primary_key=True, default=lambda: str(uuid.uuid4())
+    )
     token = db.Column(db.String(512), unique=True, nullable=False)
     user_id = db.Column(db.String(36), nullable=False)
     company_id = db.Column(db.String(36), nullable=True)

@@ -13,7 +13,7 @@ servers:
     description: Local development server
   - url: http://localhost:5001
     description: Staging development server
-  - url: https://localhost:3000
+  - url: http://localhost:3000
     description: Proxied staging server
 
 tags:
@@ -46,9 +46,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DefaultResponse'
-              example:
-                message: Login successful
+                $ref: '#/components/schemas/LoginResponse'
         '401':
           description: Invalid credentials (email or password).
           content:
@@ -98,9 +96,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DefaultResponse'
-              example:
-                message: Token refreshed
+                $ref: '#/components/schemas/RefreshResponse'
         '400':
           description: Missing refresh token.
           content:
@@ -193,23 +189,56 @@ paths:
 
 components:
   # ----------------------------------
+  # SECURITY SCHEMES
+  # ----------------------------------
+  securitySchemes:
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: access_token
+      description: |
+        JWT access token stored in HttpOnly cookie.
+        
+        **Example JWT Payload:**
+        ```json
+        {
+          "sub": "12345678-1234-1234-1234-123456789012",
+          "email": "user@example.com",
+          "company_id": "87654321-4321-4321-4321-210987654321",
+          "exp": 1728734800,
+          "jti": "abc123def456"
+        }
+        ```
+        
+        **Example Cookie Value:**
+        ```
+        eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwiY29tcGFueV9pZCI6IjU1NTUiLCJleHAiOjE3Mjg3MzQ4MDB9.aBcDeFgHiJkLmNoPqRsTuVwXyZaBcDeFgHiJkLmNoPqRsTuVwXyZ
+        ```
+
+  # ----------------------------------
   # REUSABLE PARAMETERS (Cookies)
   # ----------------------------------
   parameters:
     AccessTokenCookie:
       name: access_token
       in: cookie
-      description: The short-lived JWT used for authorization.
+      description: |
+        The short-lived JWT used for authorization (expires in 15 minutes).
+        Format: JWT with payload containing user_id, email, company_id, exp, jti.
       required: true
       schema:
         type: string
+      example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwiY29tcGFueV9pZCI6IjU1NTUiLCJleHAiOjE3Mjg3MzQ4MDB9.aBcDeFgHiJkLmNoPqRsTuVwXyZaBcDeFgHiJkLmNoPqRsTuVwXyZ"
     RefreshTokenCookie:
       name: refresh_token
       in: cookie
-      description: The long-lived JWT used to obtain a new access token.
+      description: |
+        The long-lived refresh token used to obtain a new access token (expires in 7 days).
+        Format: URL-safe base64 encoded random string (64 bytes).
       required: true
       schema:
         type: string
+      example: "a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8s9T0u1V2w3X4y5Z6A7B8C9D0E1F2G3H4"
 
   # ----------------------------------
   # REUSABLE HEADERS
@@ -223,8 +252,22 @@ components:
       schema:
         type: string
       example: >
-        access_token=eyJhbGciOiJIUzI1NiI...; Max-Age=900; Path=/; HttpOnly; Secure,
-        refresh_token=eyJhbGciOiJIUzI1NiI...; Max-Age=604800; Path=/; HttpOnly; Secure
+        access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwiY29tcGFueV9pZCI6IjU1NTUiLCJleHAiOjE3Mjg3MzQ4MDB9.aBcDeFgHiJkLmNoPqRsTuVwXyZaBcDeFgHiJkLmNoPqRsTuVwXyZ; Max-Age=900; Path=/; HttpOnly; Secure,
+        refresh_token=a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8s9T0u1V2w3X4y5Z6A7B8C9D0E1F2G3H4; Max-Age=604800; Path=/; HttpOnly; Secure
+    
+    AccessTokenCookie:
+      description: JWT access token set as HttpOnly cookie
+      schema:
+        type: string
+      example: >
+        access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwiY29tcGFueV9pZCI6IjU1NTUiLCJleHAiOjE3Mjg3MzQ4MDB9.aBcDeFgHiJkLmNoPqRsTuVwXyZaBcDeFgHiJkLmNoPqRsTuVwXyZ; Max-Age=900; Path=/; HttpOnly; Secure
+    
+    RefreshTokenCookie:
+      description: Refresh token set as HttpOnly cookie
+      schema:
+        type: string
+      example: >
+        refresh_token=a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8s9T0u1V2w3X4y5Z6A7B8C9D0E1F2G3H4; Max-Age=604800; Path=/; HttpOnly; Secure
 
   # ----------------------------------
   # REUSABLE SCHEMAS (Request/Response Bodies)
@@ -236,6 +279,58 @@ components:
         message:
           type: string
           description: A simple status message.
+
+    LoginResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: A simple status message.
+          example: "Login successful"
+        access_token:
+          type: string
+          description: |
+            JWT access token (also set as HttpOnly cookie).
+            **⚠️ Only included in development/testing environments for debugging purposes.**
+            Contains user information and expires in 15 minutes.
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwiY29tcGFueV9pZCI6IjU1NTUiLCJleHAiOjE3Mjg3MzQ4MDB9.aBcDeFgHiJkLmNoPqRsTuVwXyZaBcDeFgHiJkLmNoPqRsTuVwXyZ"
+        refresh_token:
+          type: string
+          description: |
+            Refresh token (also set as HttpOnly cookie).
+            **⚠️ Only included in development/testing environments for debugging purposes.**
+            Used to obtain new access tokens and expires in 7 days.
+          example: "a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8s9T0u1V2w3X4y5Z6A7B8C9D0E1F2G3H4"
+        _dev_note:
+          type: string
+          description: Note indicating this is development-only behavior.
+          example: "Tokens visible in development mode only"
+
+    RefreshResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: A simple status message.
+          example: "Token refreshed"
+        access_token:
+          type: string
+          description: |
+            New JWT access token (also set as HttpOnly cookie).
+            **⚠️ Only included in development/testing environments for debugging purposes.**
+            Contains user information and expires in 15 minutes.
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwiY29tcGFueV9pZCI6IjU1NTUiLCJleHAiOjE3Mjg3MzQ4MDB9.newTokenSignatureHere123456789"
+        refresh_token:
+          type: string
+          description: |
+            New refresh token (also set as HttpOnly cookie).
+            **⚠️ Only included in development/testing environments for debugging purposes.**
+            Used to obtain new access tokens and expires in 7 days.
+          example: "b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8S9t0U1v2W3x4Y5z6A7B8C9D0E1F2G3H4I5"
+        _dev_note:
+          type: string
+          description: Note indicating this is development-only behavior.
+          example: "Tokens visible in development mode only"
 
     LoginRequest:
       type: object

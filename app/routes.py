@@ -17,8 +17,6 @@ from app.resources.refresh import RefreshResource
 from app.resources.health import HealthResource
 
 
-
-
 def register_routes(app):
     """
     Register the REST API routes on the Flask application.

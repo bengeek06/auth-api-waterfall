@@ -87,7 +87,9 @@ def create_app(config_class):
     app = Flask(__name__)
     app.config.from_object(config_class)
     if env in ("development", "staging"):
-        CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
+        CORS(
+            app, supports_credentials=True, resources={r"/*": {"origins": "*"}}
+        )
 
     register_extensions(app)
     register_error_handlers(app)
