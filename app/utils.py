@@ -1,14 +1,17 @@
 """
-utils.py
---------
+Utility functions for authentication.
+
 This module provides utility functions for authentication, including credential
-checking
-against a user service or a local stub for development and testing
+checking against a user service or a local stub for development and testing
 environments.
 """
+
 import os
+
 import dotenv
+
 import requests
+
 from app.logger import logger
 
 
@@ -28,57 +31,61 @@ def check_credentials(email, password):
     Returns:
         dict or None: User information dictionary if valid, otherwise None.
     """
-    env = os.getenv('FLASK_ENV')
-    if env in ['development', 'test']:
+    env = os.getenv("FLASK_ENV")
+    if env in ["development", "test"]:
         # Stub: accept any credentials in dev/test
         return {
-            'id': 1,
-            'username': 'testuser',
-            'is_admin': True,
-            'email': email,
-            'hashed_password': 'fakehash'
+            "id": 1,
+            "username": "testuser",
+            "is_admin": True,
+            "email": email,
+            "hashed_password": "fakehash",
         }
 
-    if env in ['production', 'staging']:
-        dotenv.load_dotenv(f'.env.{env}')
-        user_service_url = os.getenv('USER_SERVICE_URL')
+    if env in ["production", "staging"]:
+        dotenv.load_dotenv(f".env.{env}")
+        user_service_url = os.getenv("USER_SERVICE_URL")
         if not user_service_url:
             logger.error(
-                "USER_SERVICE_URL is not set in environment variables.")
+                "USER_SERVICE_URL is not set in environment variables."
+            )
             return None
-        internal_secret = os.getenv('INTERNAL_AUTH_TOKEN')
+        internal_secret = os.getenv("INTERNAL_AUTH_TOKEN")
         if not internal_secret:
             logger.error(
-                "INTERNAL_AUTH_TOKEN is not set in environment variables.")
+                "INTERNAL_AUTH_TOKEN is not set in environment variables."
+            )
             return None
 
         try:
-            payload = {'email': email, 'password': password}
+            payload = {"email": email, "password": password}
             logger.debug(
-                f"Verifying password for user {email} at {user_service_url}/verify_password"
-                )
+                "Verifying password for user %s at %s/verify_password",
+                email,
+                user_service_url,
+            )
 
             # Call the user service to verify the password
-            requests_headers = {'X-Internal-Token': internal_secret}
+            requests_headers = {"X-Internal-Token": internal_secret}
             resp = requests.post(
                 f"{user_service_url}/verify_password",
                 json=payload,
                 headers=requests_headers,
-                timeout=2
-                )
+                timeout=2,
+            )
             if resp.status_code != 200:
                 logger.error(
                     "Failed to fetch user: %s - %s",
                     resp.status_code,
-                    resp.text
-                    )
+                    resp.text,
+                )
                 return None
             logger.debug("Response status code: %s", resp.status_code)
             logger.debug("Response text: %s", resp.text)
 
             user = resp.json()
             logger.debug("User data: %s", user)
-            user_id = user.get('id')
+            user_id = user.get("id")
 
             if not user_id:
                 logger.error("Invalid user credentials.")
@@ -99,6 +106,5 @@ def check_credentials(email, password):
             logger.error("Error decoding JSON response: %s", e)
             return None
 
-    else:
-        logger.error("Unsupported environment: %s", env)
-        return None
+    logger.error("Unsupported environment: %s", env)
+    return None

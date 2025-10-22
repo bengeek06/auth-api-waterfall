@@ -1,9 +1,8 @@
 """
-config.py
----------
+Configuration resource for the Flask API.
 
-This module defines the ConfigResource for exposing the current application
-configuration through a REST endpoint.
+This module provides an endpoint to retrieve current application
+configuration information for debugging and monitoring purposes.
 """
 
 import os

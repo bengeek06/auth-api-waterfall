@@ -1,10 +1,9 @@
 """
-version.py
-----------
+Version resource for the Flask API.
 
-This module defines the VersionResource for exposing the current API version
-through a REST endpoint.
+This module provides an endpoint to retrieve the current application version information.
 """
+
 from flask_restful import Resource
 
 API_VERSION = "0.0.1"

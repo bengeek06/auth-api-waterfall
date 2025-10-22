@@ -1,34 +1,45 @@
 """
-# conftest.py
-# -----------
+Test configuration and fixtures.
+
+This module provides pytest fixtures and configuration for the test suite,
+including application setup and database management for testing.
 """
+
 import os
+
 from pytest import fixture
 from dotenv import load_dotenv
 
-os.environ['FLASK_ENV'] = 'testing'
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env.test'))
-from app import create_app
-from app.models import db
+os.environ["FLASK_ENV"] = "testing"
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env.test"))
+
+from app import create_app  # noqa: E402
+from app.models import db  # noqa: E402
+
 
 @fixture
 def app():
     """
     Fixture to create and configure a Flask application for testing.
+
     This fixture sets up the application context, initializes the database,
     and ensures that the database is created before tests run and dropped after tests complete.
     """
-    app = create_app('app.config.TestingConfig')
+    app = create_app("app.config.TestingConfig")
     with app.app_context():
         db.create_all()
         yield app
         db.drop_all()
 
+
 @fixture
 def client(app):
+    """Create a test client for the Flask application."""
     return app.test_client()
+
 
 @fixture
 def session(app):
+    """Provide a database session for testing."""
     with app.app_context():
         yield db.session

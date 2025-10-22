@@ -1,21 +1,36 @@
-openapi: 3.0.3
+openapi: 3.0.0
 info:
-  title: PM Auth API
-  version: "1.0.0"
-  description: API for authentication, token management, and configuration.
-
+  title: Authentication API
+  version: 0.0.1
+  description: |
+    **Waterfall Auth API** is a RESTful authentication service for user login,
+    logout, token verification, refresh, and configuration/version endpoints.
+    
+    It uses JWT for access tokens and supports **secure, HttpOnly cookie-based**
+    authentication.
 servers:
   - url: http://localhost:5000
     description: Local development server
-  - url: http://localhost:5000
+  - url: http://localhost:5001
     description: Staging development server
+  - url: http://localhost:3000
+    description: Proxied staging server
+
+tags:
+  - name: auth
+    description: User authentication and token management endpoints.
+  - name: admin
+    description: System status and version endpoints.
 
 paths:
   /login:
     post:
-      summary: User login and token issuance
+      summary: User Login
       description: |
-        Authenticates a user and issues JWT access and refresh tokens as HttpOnly cookies.
+        Authenticates a user with email and password, issuing JWT access and refresh 
+        tokens set as secure, HttpOnly cookies.
+      tags:
+        - auth
       requestBody:
         required: true
         content:
@@ -24,113 +39,299 @@ paths:
               $ref: '#/components/schemas/LoginRequest'
       responses:
         '200':
-          description: Login successful, tokens set as cookies
+          description: Login successful, tokens set as cookies.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/AuthCookies'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageResponse'
+                $ref: '#/components/schemas/LoginResponse'
         '401':
-          description: Invalid email or password
+          description: Invalid credentials (email or password).
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageResponse'
-
-  /logout:
-    post:
-      summary: User logout and token revocation
-      description: |
-        Blacklists the access token, deletes the refresh token, and clears authentication cookies.
-      responses:
-        '200':
-          description: Logout successful, cookies cleared
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponse'
-        '400':
-          description: Missing tokens
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponse'
-
-  /refresh:
-    post:
-      summary: Refresh access token
-      description: |
-        Issues a new JWT access token using a valid refresh token. Rotates the refresh token.
-      responses:
-        '200':
-          description: Token refreshed, new access token set as cookie
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponse'
-        '400':
-          description: Missing refresh token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponse'
-        '401':
-          description: Invalid or expired refresh token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponse'
+                $ref: '#/components/schemas/DefaultResponse'
+              example:
+                message: Invalid email or password
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
 
   /verify:
     get:
-      summary: Verify access token
-      description: |
-        Verifies the validity of the JWT access token from cookies.
+      summary: Verify Access Token Validity
+      description: Verifies the validity of the JWT access token from the cookies.
+      tags:
+        - auth
+      parameters:
+        - $ref: '#/components/parameters/AccessTokenCookie'
+        # The refresh token is often not needed for simple verification, 
+        # but kept here for consistency with your original design.
+        - $ref: '#/components/parameters/RefreshTokenCookie'
       responses:
         '200':
-          description: Token is valid
+          description: Token is valid.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/VerifyResponse'
         '401':
-          description: Token is missing, invalid, expired, or revoked
+          $ref: '#/components/responses/UnauthorizedToken'
+  
+  /refresh:
+    post:
+      summary: Refresh Access Token
+      description: Issues a new JWT access token using a valid refresh token. Typically rotates the refresh token too.
+      tags:
+        - auth
+      parameters:
+        - $ref: '#/components/parameters/RefreshTokenCookie'
+      responses:
+        '200':
+          description: Tokens refreshed, new access and refresh tokens set as cookies.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/AuthCookies'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageResponse'
+                $ref: '#/components/schemas/RefreshResponse'
+        '400':
+          description: Missing refresh token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefaultResponse'
+              example:
+                message: Missing refresh token
+        '401':
+          description: Invalid or expired refresh token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefaultResponse'
+              example:
+                message: Invalid or expired refresh token
+
+  /logout:
+    post:
+      summary: User Logout and Token Revocation
+      description: |
+        Blacklists the access token, deletes the refresh token, and sends Set-Cookie 
+        headers with expired dates to clear authentication cookies from the client.
+      tags:
+        - auth
+      parameters:
+        - $ref: '#/components/parameters/AccessTokenCookie'
+        - $ref: '#/components/parameters/RefreshTokenCookie'
+      responses:
+        '200':
+          description: Logout successful, cookies cleared.
+          # In a real system, you'd send an "empty" Set-Cookie to clear the tokens.
+          # Documenting the expected client response (cleared cookies) is usually sufficient.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefaultResponse'
+              example:
+                message: "Logout successful"
+        '400':
+          description: Missing tokens.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefaultResponse'
+              example:
+                message: "Missing tokens"
 
   /config:
     get:
-      summary: Get application configuration
-      description: Returns the current application configuration.
+      summary: Get Application Configuration
+      description: Returns the current application configuration including environment variables and settings.
+      tags:
+        - admin
       responses:
         '200':
-          description: Application configuration
+          description: Configuration retrieved successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ConfigResponse'
+                
+  /health:
+    get:
+      summary: Service Health Check
+      description: Returns information on the running service status.
+      tags:
+        - admin
+      responses:
+        '200':
+          description: API is healthy.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
 
   /version:
     get:
-      summary: Get API version
-      description: Returns the current API version.
+      summary: Get API Version
+      description: Returns the current API version number.
+      tags:
+        - admin
       responses:
         '200':
-          description: API version
+          description: API version.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/VersionResponse'
 
 components:
+  # ----------------------------------
+  # SECURITY SCHEMES
+  # ----------------------------------
   securitySchemes:
-    cookieAuth:
+    CookieAuth:
       type: apiKey
       in: cookie
       name: access_token
+      description: |
+        JWT access token stored in HttpOnly cookie.
+        
+        **Example JWT Payload:**
+        ```json
+        {
+          "sub": "12345678-1234-1234-1234-123456789012",
+          "email": "user@example.com",
+          "company_id": "87654321-4321-4321-4321-210987654321",
+          "exp": 1728734800,
+          "jti": "abc123def456"
+        }
+        ```
+        
+        **Example Cookie Value:**
+        ```
+        eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwiY29tcGFueV9pZCI6IjU1NTUiLCJleHAiOjE3Mjg3MzQ4MDB9.aBcDeFgHiJkLmNoPqRsTuVwXyZaBcDeFgHiJkLmNoPqRsTuVwXyZ
+        ```
 
+  # ----------------------------------
+  # REUSABLE PARAMETERS (Cookies)
+  # ----------------------------------
+  parameters:
+    AccessTokenCookie:
+      name: access_token
+      in: cookie
+      description: |
+        The short-lived JWT used for authorization (expires in 15 minutes).
+        Format: JWT with payload containing user_id, email, company_id, exp, jti.
+      required: true
+      schema:
+        type: string
+      example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwiY29tcGFueV9pZCI6IjU1NTUiLCJleHAiOjE3Mjg3MzQ4MDB9.aBcDeFgHiJkLmNoPqRsTuVwXyZaBcDeFgHiJkLmNoPqRsTuVwXyZ"
+    RefreshTokenCookie:
+      name: refresh_token
+      in: cookie
+      description: |
+        The long-lived refresh token used to obtain a new access token (expires in 7 days).
+        Format: URL-safe base64 encoded random string (64 bytes).
+      required: true
+      schema:
+        type: string
+      example: "a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8s9T0u1V2w3X4y5Z6A7B8C9D0E1F2G3H4"
+
+  # ----------------------------------
+  # REUSABLE HEADERS
+  # ----------------------------------
+  headers:
+    AuthCookies:
+      description: |
+        Sets the secure, HttpOnly `access_token` and `refresh_token` cookies.
+        Note: The server typically sends two separate Set-Cookie headers, but OpenAPI 
+        combines the description here for simplicity.
+      schema:
+        type: string
+      example: >
+        access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwiY29tcGFueV9pZCI6IjU1NTUiLCJleHAiOjE3Mjg3MzQ4MDB9.aBcDeFgHiJkLmNoPqRsTuVwXyZaBcDeFgHiJkLmNoPqRsTuVwXyZ; Max-Age=900; Path=/; HttpOnly; Secure,
+        refresh_token=a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8s9T0u1V2w3X4y5Z6A7B8C9D0E1F2G3H4; Max-Age=604800; Path=/; HttpOnly; Secure
+    
+    AccessTokenCookie:
+      description: JWT access token set as HttpOnly cookie
+      schema:
+        type: string
+      example: >
+        access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwiY29tcGFueV9pZCI6IjU1NTUiLCJleHAiOjE3Mjg3MzQ4MDB9.aBcDeFgHiJkLmNoPqRsTuVwXyZaBcDeFgHiJkLmNoPqRsTuVwXyZ; Max-Age=900; Path=/; HttpOnly; Secure
+    
+    RefreshTokenCookie:
+      description: Refresh token set as HttpOnly cookie
+      schema:
+        type: string
+      example: >
+        refresh_token=a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8s9T0u1V2w3X4y5Z6A7B8C9D0E1F2G3H4; Max-Age=604800; Path=/; HttpOnly; Secure
+
+  # ----------------------------------
+  # REUSABLE SCHEMAS (Request/Response Bodies)
+  # ----------------------------------
   schemas:
+    DefaultResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: A simple status message.
+
+    LoginResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: A simple status message.
+          example: "Login successful"
+        access_token:
+          type: string
+          description: |
+            JWT access token (also set as HttpOnly cookie).
+            **⚠️ Only included in development/testing environments for debugging purposes.**
+            Contains user information and expires in 15 minutes.
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwiY29tcGFueV9pZCI6IjU1NTUiLCJleHAiOjE3Mjg3MzQ4MDB9.aBcDeFgHiJkLmNoPqRsTuVwXyZaBcDeFgHiJkLmNoPqRsTuVwXyZ"
+        refresh_token:
+          type: string
+          description: |
+            Refresh token (also set as HttpOnly cookie).
+            **⚠️ Only included in development/testing environments for debugging purposes.**
+            Used to obtain new access tokens and expires in 7 days.
+          example: "a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8s9T0u1V2w3X4y5Z6A7B8C9D0E1F2G3H4"
+        _dev_note:
+          type: string
+          description: Note indicating this is development-only behavior.
+          example: "Tokens visible in development mode only"
+
+    RefreshResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: A simple status message.
+          example: "Token refreshed"
+        access_token:
+          type: string
+          description: |
+            New JWT access token (also set as HttpOnly cookie).
+            **⚠️ Only included in development/testing environments for debugging purposes.**
+            Contains user information and expires in 15 minutes.
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwiY29tcGFueV9pZCI6IjU1NTUiLCJleHAiOjE3Mjg3MzQ4MDB9.newTokenSignatureHere123456789"
+        refresh_token:
+          type: string
+          description: |
+            New refresh token (also set as HttpOnly cookie).
+            **⚠️ Only included in development/testing environments for debugging purposes.**
+            Used to obtain new access tokens and expires in 7 days.
+          example: "b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8S9t0U1v2W3x4Y5z6A7B8C9D0E1F2G3H4I5"
+        _dev_note:
+          type: string
+          description: Note indicating this is development-only behavior.
+          example: "Tokens visible in development mode only"
+
     LoginRequest:
       type: object
       required:
@@ -140,35 +341,36 @@ components:
         email:
           type: string
           format: email
+          description: User's email address.
         password:
           type: string
-
-    MessageResponse:
-      type: object
-      properties:
-        message:
-          type: string
+          format: password
+          description: User's password.
 
     VerifyResponse:
       type: object
       properties:
-        user_id:
-          type: string
         company_id:
-          type: integer
+          type: string
+          format: uuid
         email:
           type: string
+          format: email
+        user_id:
+          type: string
+          format: uuid
         valid:
           type: boolean
 
-    ConfigResponse:
+    HealthResponse:
       type: object
       properties:
-        FLASK_ENV:
+        status:
           type: string
-        DEBUG:
+          enum: [healthy, degraded, unhealthy]
+        service:
           type: string
-        DATABASE_URI:
+        message:
           type: string
 
     VersionResponse:
@@ -176,44 +378,47 @@ components:
       properties:
         version:
           type: string
+          description: The current service version (e.g., '0.0.1').
 
-    RefreshToken:
+    ConfigResponse:
       type: object
       properties:
-        id:
-          type: integer
-        token:
+        FLASK_ENV:
           type: string
-        user_id:
-          type: integer
-        company_id:
-          type: integer
-        created_at:
+          description: Current Flask environment (development, testing, staging, production).
+        DATABASE_URL:
           type: string
-          format: date-time
-        expires_at:
+          description: Database connection URL.
+        LOG_LEVEL:
           type: string
-          format: date-time
-        revoked:
-          type: boolean
+          description: Current logging level.
+        USER_SERVICE_URL:
+          type: string
+          description: URL of the user service API.
 
-    TokenBlacklist:
-      type: object
-      properties:
-        id:
-          type: integer
-        jti:
-          type: string
-        user_id:
-          type: integer
-        company_id:
-          type: integer
-        created_at:
-          type: string
-          format: date-time
-        expires_at:
-          type: string
-          format: date-time
+  # ----------------------------------
+  # REUSABLE RESPONSES
+  # ----------------------------------
+  responses:
+    UnauthorizedToken:
+      description: Token is missing, invalid, expired, or revoked.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DefaultResponse'
+          examples:
+            missing:
+              value:
+                message: "Missing access token"
+            expired:
+              value:
+                message: "Expired access token"
 
-security:
-  - cookieAuth: []
+    UnsupportedMediaType:
+      description: Did not attempt to load JSON data because the request Content-Type was not 'application/json'.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DefaultResponse'
+          example:
+            message: "Unsupported Media Type. Request Content-Type must be 'application/json'."

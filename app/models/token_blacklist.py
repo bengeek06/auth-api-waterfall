@@ -1,9 +1,10 @@
 """
-token_blacklist.py
-------------------
-This module defines the TokenBlacklist model for storing blacklisted (revoked)
-JWT tokens in the database.
+Token blacklist model for JWT authentication.
+
+This module defines the TokenBlacklist model for storing revoked
+JWT tokens to prevent their reuse.
 """
+
 import uuid
 from . import db
 
@@ -20,15 +21,14 @@ class TokenBlacklist(db.Model):
         created_at (datetime): Timestamp when the token was blacklisted.
         expires_at (datetime): Expiration datetime of the token.
     """
-    __tablename__ = 'token_blacklist'
+
+    __tablename__ = "token_blacklist"
     id = db.Column(
-        db.String(36),
-        primary_key=True,
-        default=lambda: str(uuid.uuid4())
+        db.String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     jti = db.Column(db.String(255), unique=True, nullable=False)
     user_id = db.Column(db.String(36), nullable=False)
-    company_id = db.Column(db.String(36), nullable=False)
+    company_id = db.Column(db.String(36), nullable=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     expires_at = db.Column(db.DateTime, nullable=False)
 

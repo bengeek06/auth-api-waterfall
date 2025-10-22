@@ -1,9 +1,9 @@
 """
-verify.py
----------
-This module provides the VerifyResource for handling JWT access token
-verification.
+Token verification resource for JWT authentication.
+
+This module provides an endpoint for verifying JWT token validity and extracting user information.
 """
+
 import os
 from datetime import datetime, timezone
 import jwt
@@ -23,6 +23,7 @@ class VerifyResource(Resource):
         - Verifies the token signature, expiration, and blacklist status.
         - Returns user information if the token is valid.
     """
+
     def get(self):
         """
         Handle access token verification.
@@ -33,46 +34,47 @@ class VerifyResource(Resource):
         expired, or revoked.
         """
         logger.info("Token verification attempt started")
-        access_token = request.cookies.get('access_token')
+        access_token = request.cookies.get("access_token")
         if not access_token:
             logger.error("Missing access token for verification")
-            return {'message': 'Missing access token'}, 401
+            return {"message": "Missing access token"}, 401
 
         try:
             payload = jwt.decode(
-                access_token,
-                os.environ['JWT_SECRET'],
-                algorithms=['HS256']
+                access_token, os.environ["JWT_SECRET"], algorithms=["HS256"]
             )
-            jti = payload.get('jti')
+            jti = payload.get("jti")
             if not jti:
                 logger.error("No JTI in token")
-                return {'message': 'Invalid token'}, 401
+                return {"message": "Invalid token"}, 401
 
             # Check if the token is blacklisted
             blacklisted = TokenBlacklist.query.filter_by(jti=jti).first()
             if blacklisted:
                 logger.warning("Token is blacklisted")
-                return {'message': 'Token revoked'}, 401
+                return {"message": "Token revoked"}, 401
 
             # Check expiration
-            exp = payload.get('exp')
+            exp = payload.get("exp")
             if exp and datetime.fromtimestamp(
-                    exp, tz=timezone.utc) < datetime.now(timezone.utc):
+                exp, tz=timezone.utc
+            ) < datetime.now(timezone.utc):
                 logger.warning("Token expired")
-                return {'message': 'Token expired'}, 401
+                return {"message": "Token expired"}, 401
 
             # Successful authentication
-            return jsonify({
-                'user_id': payload.get('sub'),
-                'company_id': payload.get('company_id'),
-                'email': payload.get('email'),
-                'valid': True
-            })
+            return jsonify(
+                {
+                    "user_id": payload.get("sub"),
+                    "company_id": payload.get("company_id"),
+                    "email": payload.get("email"),
+                    "valid": True,
+                }
+            )
 
         except jwt.ExpiredSignatureError:
             logger.warning("Token expired (jwt.ExpiredSignatureError)")
-            return {'message': 'Token expired'}, 401
+            return {"message": "Token expired"}, 401
         except jwt.InvalidTokenError as e:
             logger.error("Invalid token: %s", e)
-            return {'message': 'Invalid token'}, 401
+            return {"message": "Invalid token"}, 401

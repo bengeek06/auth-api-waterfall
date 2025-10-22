@@ -1,6 +1,5 @@
 """
-logger.py
----------
+Logger configuration module.
 
 This module configures the application logger using structlog and colorlog.
 
@@ -15,28 +14,33 @@ Usage:
     logger.info("Your log message", extra_field="value")
 """
 
-import os
 import logging
+import os
+
 import colorlog
+
 import structlog
+
 
 # Detect environment
 env = os.environ.get("FLASK_ENV", "development").lower()
 
 # Configure the root logger with colorlog for human-readable output
 handler = colorlog.StreamHandler()
-handler.setFormatter(colorlog.ColoredFormatter(
-    '%(log_color)s[%(asctime)s] %(levelname)s %(filename)s:%(lineno)d '
-    '%(funcName)s: %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-    log_colors={
-        'DEBUG':    'cyan',
-        'INFO':     'green',
-        'WARNING':  'yellow',
-        'ERROR':    'red',
-        'CRITICAL': 'bold_red',
-    }
-))
+handler.setFormatter(
+    colorlog.ColoredFormatter(
+        "%(log_color)s[%(asctime)s] %(levelname)s %(filename)s:%(lineno)d "
+        "%(funcName)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        log_colors={
+            "DEBUG": "cyan",
+            "INFO": "green",
+            "WARNING": "yellow",
+            "ERROR": "red",
+            "CRITICAL": "bold_red",
+        },
+    )
+)
 
 # Set log level from LOG_LEVEL env var, default to INFO
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
@@ -57,7 +61,7 @@ structlog.configure(
         structlog.stdlib.add_log_level,
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
-        renderer
+        renderer,
     ],
     logger_factory=structlog.stdlib.LoggerFactory(),
     wrapper_class=structlog.stdlib.BoundLogger,

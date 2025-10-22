@@ -1,9 +1,10 @@
 """
-refresh_token.py
-----------------
-This module defines the RefreshToken model for storing refresh tokens in
-the database.
+Refresh token model for JWT authentication.
+
+This module defines the RefreshToken model for storing and managing
+JWT refresh tokens in the database.
 """
+
 import uuid
 from . import db
 
@@ -21,16 +22,15 @@ class RefreshToken(db.Model):
         expires_at (datetime): Expiration datetime of the token.
         revoked (bool): Whether the token has been revoked.
     """
-    __tablename__ = 'refresh_tokens'
+
+    __tablename__ = "refresh_tokens"
 
     id = db.Column(
-        db.String(36),
-        primary_key=True,
-        default=lambda: str(uuid.uuid4())
+        db.String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     token = db.Column(db.String(512), unique=True, nullable=False)
     user_id = db.Column(db.String(36), nullable=False)
-    company_id = db.Column(db.String(36), nullable=False)
+    company_id = db.Column(db.String(36), nullable=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     expires_at = db.Column(db.DateTime, nullable=False)
     revoked = db.Column(db.Boolean, default=False)
