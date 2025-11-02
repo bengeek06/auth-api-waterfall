@@ -58,13 +58,8 @@ RUN pip install -r requirements-dev.txt
 
 WORKDIR /app
 
-# Copy application code
-COPY app/ ./app/
-COPY migrations/ ./migrations/
-COPY wsgi.py run.py pytest.ini setup.cfg ./
-
-# Copy tests explicitly (even if in .dockerignore)
-COPY tests/ ./tests/
+# Copy all needed files for testing (tests folder should NOT be in .dockerignore)
+COPY . .
 
 # Variables minimales de test
 ENV FLASK_ENV=testing \
