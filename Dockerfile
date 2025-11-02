@@ -62,10 +62,12 @@ COPY . .
 # Variables minimales de test
 ENV FLASK_ENV=testing \
     APP_MODE=testing \
-    PYTEST_ADDOPTS="-q"
+    PYTEST_ADDOPTS="-q" \
+    DATABASE_URL=sqlite:///:memory: \
+    JWT_SECRET=test-jwt-secret-key
 
-# Commande par défaut: exécution tests
-CMD ["pytest"]
+# Pas d'entrypoint, juste exécuter pytest directement
+CMD ["pytest", "-v"]
 
 ###############################
 # Production runtime          #

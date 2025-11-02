@@ -49,10 +49,7 @@ jobs:
 
       - name: Run tests
         run: |
-          docker run --rm \
-            -e FLASK_ENV=testing \
-            -e JWT_SECRET=test-jwt-secret-key \
-            test-image:${{ github.run_id }} pytest -q
+          docker run --rm test-image:${{ github.run_id }}
 
   build:
     name: Build (no push on PR)
