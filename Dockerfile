@@ -57,17 +57,24 @@ FROM base AS test
 RUN pip install -r requirements-dev.txt
 
 WORKDIR /app
-COPY . .
+
+# Copy application code
+COPY app/ ./app/
+COPY migrations/ ./migrations/
+COPY wsgi.py run.py pytest.ini setup.cfg ./
+
+# Copy tests explicitly (even if in .dockerignore)
+COPY tests/ ./tests/
 
 # Variables minimales de test
 ENV FLASK_ENV=testing \
     APP_MODE=testing \
-    PYTEST_ADDOPTS="-q" \
+    PYTEST_ADDOPTS="-v" \
     DATABASE_URL=sqlite:///:memory: \
     JWT_SECRET=test-jwt-secret-key
 
 # Pas d'entrypoint, juste exécuter pytest directement
-CMD ["pytest", "-v"]
+CMD ["pytest"]
 
 ###############################
 # Production runtime          #
