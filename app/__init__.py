@@ -82,10 +82,11 @@ def create_app(config_class):
     Returns:
         Flask: The configured and ready-to-use Flask application instance.
     """
-    env = os.getenv("FLASK_ENV")
-    logger.info("Creating app in %s environment.", env)
     app = Flask(__name__)
     app.config.from_object(config_class)
+
+    env = os.getenv("FLASK_ENV")
+    logger.info("Creating app in environment.", environment=env)
     if env in ("development", "staging"):
         CORS(
             app, supports_credentials=True, resources={r"/*": {"origins": "*"}}

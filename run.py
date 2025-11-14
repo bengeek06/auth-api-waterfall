@@ -6,7 +6,6 @@ in development and staging environments with appropriate configuration.
 """
 
 import os
-
 from dotenv import load_dotenv
 
 from app import create_app
@@ -25,7 +24,9 @@ def main():
 
     # Load .env file ONLY if not running in Docker
     # Docker containers have IN_DOCKER_CONTAINER env var or specific variables
-    if not os.environ.get("IN_DOCKER_CONTAINER") and not os.environ.get("APP_MODE"):
+    if not os.environ.get("IN_DOCKER_CONTAINER") and not os.environ.get(
+        "APP_MODE"
+    ):
         env_file = f".env.{env}"
         if os.path.exists(env_file):
             load_dotenv(env_file)
@@ -33,29 +34,28 @@ def main():
         else:
             logger.warning(f"Environment file {env_file} not found")
     else:
-        logger.info("Running in container - using environment variables directly")
-
-    logger.info(f"Running in {env} environment")
+        logger.info("Running in Docker container, skipping .env file loading")
 
     # Configuration mapping
-    config_mapping = {
-        "production": "app.config.ProductionConfig",
-        "staging": "app.config.StagingConfig",
-        "testing": "app.config.TestingConfig",
+    config_classes = {
         "development": "app.config.DevelopmentConfig",
+        "testing": "app.config.TestingConfig",
+        "staging": "app.config.StagingConfig",
+        "production": "app.config.ProductionConfig",
     }
 
-    config_class = config_mapping.get(env, "app.config.DevelopmentConfig")
-    logger.info(f"Using config class: {config_class}")
+    config_class = config_classes.get(env, "app.config.DevelopmentConfig")
+    logger.info(f"Environment: {env}, Config: {config_class}")
 
-    # Create app
     app = create_app(config_class)
 
-    # Development server settings
-    debug = env in ["development", "testing"]
+    # Use Flask config DEBUG setting instead of environment detection
+    debug = app.config.get("DEBUG", False)
     port = int(os.environ.get("PORT", 5000))
 
-    logger.info(f"Starting Flask development server on port {port}")
+    logger.info(
+        f"Starting Flask development server on port {port} (debug={debug})"
+    )
     app.run(host="0.0.0.0", port=port, debug=debug)
 
 
